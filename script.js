@@ -2,24 +2,6 @@
 const game_canvas = document.querySelector("#game_canvas");
 const context = game_canvas.getContext("2d");
 
-/** @type {ImageBitmap?} */
-let run_spritesheet
-const run_spritesheet_image = new Image(1452,1374);
-run_spritesheet_image.src = "run_spritesheet.png";
-run_spritesheet_image.decode().then(async () => {
-    run_spritesheet = await createImageBitmap(run_spritesheet_image);
-})
-const run_sprite_dimentions = new Vector2(363,458);
-
-/** @type {ImageBitmap?} */
-let idle_spritesheet
-const idle_spritesheet_image = new Image(1160,878);
-idle_spritesheet_image.src = "idle_spritesheet.png";
-idle_spritesheet_image.decode().then(async () => {
-    idle_spritesheet = await createImageBitmap(idle_spritesheet_image);
-})
-const idle_sprite_dimentions = new Vector2(232,439)
-
 class Vector2 {
     x = 0;
     y = 0;
@@ -46,6 +28,24 @@ class Vector2 {
     }
 }
 
+/** @type {ImageBitmap?} */
+let run_spritesheet
+const run_spritesheet_image = new Image(1452,1374);
+run_spritesheet_image.src = "run_spritesheet.png";
+run_spritesheet_image.decode().then(async () => {
+    run_spritesheet = await createImageBitmap(run_spritesheet_image);
+})
+const run_sprite_dimentions = new Vector2(363,458);
+
+/** @type {ImageBitmap?} */
+let idle_spritesheet
+const idle_spritesheet_image = new Image(1160,878);
+idle_spritesheet_image.src = "idle_spritesheet.png";
+idle_spritesheet_image.decode().then(async () => {
+    idle_spritesheet = await createImageBitmap(idle_spritesheet_image);
+})
+const idle_sprite_dimentions = new Vector2(232,439);
+
 class Game {
     size = new Vector2(640,320);
     fps = 60;
@@ -57,7 +57,13 @@ class Game {
     /** @type {Player} */
     player;
     constructor() {
-        const player = new Player();
+        const player = new Player(
+            new Vector2(0,0),
+            new Vector2(0,0),
+            new Map(Object.entries({
+                idle: new SpriteAnimation()
+            }))
+        );
         this.target_dt = 1/this.fps;
         this.player = player;
         this.sprites.push(player)
@@ -107,6 +113,7 @@ class Sprite extends Actor {
      * @param {Vector2} size
     */
     constructor(texture,pos,size) {
+        super()
         this.texture = texture;
         this.pos = pos;
         this.size = size;
@@ -141,6 +148,10 @@ class SpriteAnimation {
         frame_pos.y *= this.frame_size.y
         return frame_pos
     }
+    //TODO
+    constructor(atlas,atlas_size,frames_in_row,frame_size,frame_amount) {
+
+    }
 }
 
 class AnimatedSprite extends Sprite {
@@ -172,9 +183,8 @@ class AnimatedSprite extends Sprite {
      * @param {string} animation
      * @param {Map<string,SpriteAnimation>} sprite_animations
     */
-    constructor(pos,size,animation,sprite_animations) {
+    constructor(pos,size,sprite_animations) {
         super(null,pos,size);
-        this.animation = animation;
         this.sprite_animations = sprite_animations;
     }
     /** @param {Game} game */
