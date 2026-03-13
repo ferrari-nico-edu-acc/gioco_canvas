@@ -172,8 +172,8 @@ class AnimatedSprite extends Sprite {
      * @param {string} animation
      * @param {Map<string,SpriteAnimation>} sprite_animations
     */
-    constructor(texture,pos,size,animation,sprite_animations) {
-        super(texture,pos,size);
+    constructor(pos,size,animation,sprite_animations) {
+        super(null,pos,size);
         this.animation = animation;
         this.sprite_animations = sprite_animations;
     }
@@ -206,6 +206,7 @@ class Player extends AnimatedSprite {
         this.size.y = run_sprite_dimentions.x/5
         this.pos.x = game.size.x / 2 - this.size.x / 2;
         this.pos.y = game.size.y / 2 - this.size.y / 2;
+        this.set_animation("idle",game.last_frame);
         document.addEventListener("keydown", ev => {
             if (this.keys_down.has(ev.key)) {
                 this.keys_down.set(ev.key, true);
