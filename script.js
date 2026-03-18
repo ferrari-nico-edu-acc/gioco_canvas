@@ -2,19 +2,29 @@
 const game_canvas = document.querySelector("#game_canvas");
 const context = game_canvas.getContext("2d");
 
+/** @template T */
+class Referenced {
+    /** @type {T} */
+    value;
+    /** @param {T} value */
+    constructor(value) {
+        this.value = value;
+    }
+}
+
 class Vector2 {
     x = 0;
     y = 0;
     /**
-     * @param {number} x
-     * @param {number} y 
+     * @param {number?} x
+     * @param {number?} y 
     */
     constructor(x,y) {
-        this.x = x;
-        this.y = y;
+        this.x = x ?? 0;
+        this.y = y ?? 0;
     }
     get magnitude() {
-        return Math.sqrt(x*x + y*y)
+        return Math.sqrt(this.x*this.x + this.y*this.y)
     }
     normalize() {
         const mag = this.magnitude;
@@ -28,23 +38,50 @@ class Vector2 {
     }
 }
 
-/** @type {ImageBitmap?} */
-let run_spritesheet
-const run_spritesheet_image = new Image(1452,1374);
-run_spritesheet_image.src = "run_spritesheet.png";
-run_spritesheet_image.decode().then(async () => {
-    run_spritesheet = await createImageBitmap(run_spritesheet_image);
-})
-const run_sprite_dimentions = new Vector2(363,458);
+class TextureLoader {
+    /** @type {Referenced<ImageBitmap?>} */
+    texture = new Referenced(null);
+    size = new Vector2();
+    src = "";
+    /**
+     * @param {Vector2} size
+     * @param {string} src
+     */
+    constructor(size,src) {
+        this.size = size;
+        this.src = src;
+        const image = new Image(this.size.x,this.size.y);
+        image.src = this.src
+        image.decode().then(async () => {
+            this.texture.value = await createImageBitmap(image)
+        })
+    }
+}
 
-/** @type {ImageBitmap?} */
-let idle_spritesheet
-const idle_spritesheet_image = new Image(1160,878);
-idle_spritesheet_image.src = "idle_spritesheet.png";
-idle_spritesheet_image.decode().then(async () => {
-    idle_spritesheet = await createImageBitmap(idle_spritesheet_image);
-})
-const idle_sprite_dimentions = new Vector2(232,439);
+class SpritesheetLoader extends TextureLoader {
+    sprite_size = new Vector2()
+    /**
+     * @param {Vector2} size
+     * @param {Vector2} sprite_size
+     * @param {string} src
+     */
+    constructor(size,sprite_size,src) {
+        this.sprite_size = sprite_size
+        super(size,src)
+    }
+}
+
+const idle_spritesheet = new SpritesheetLoader(
+    new Vector2(1160,878),
+    new Vector2(232,439),
+    "idle_spritesheet.png"
+)
+
+const run_spritesheet = new SpritesheetLoader(
+    new Vector2(1452,1374),
+    new Vector2(363,458),
+    "run_spritesheet.png"
+)
 
 class Game {
     size = new Vector2(640,320);
@@ -58,10 +95,13 @@ class Game {
     player;
     constructor() {
         const player = new Player(
-            new Vector2(0,0),
-            new Vector2(0,0),
+            new Vector2(),
+            new Vector2(),
             new Map(Object.entries({
-                idle: new SpriteAnimation()
+                idle: new SpriteAnimation(
+                    idle_spritesheet,
+
+                )
             }))
         );
         this.target_dt = 1/this.fps;
@@ -101,14 +141,14 @@ class Actor {
 }
 
 class Sprite extends Actor {
-    pos = new Vector2(0,0);
-    size = new Vector2(0,0);
-    src_pos = new Vector2(0,0);
-    src_size = new Vector2(0,0);
-    /** @type {CanvasImageSource} */
+    pos = new Vector2();
+    size = new Vector2();
+    src_pos = new Vector2();
+    src_size = new Vector2();
+    /** @type {Referenced<CanvasImageSource?>} */
     texture;
     /** 
-     * @param {CanvasImageSource} texture
+     * @param {Referenced<CanvasImageSource?>} texture
      * @param {Vector2} pos
      * @param {Vector2} size
     */
@@ -120,16 +160,19 @@ class Sprite extends Actor {
     }
     /** @param {Game} game */
     draw(game) {
-        context.drawImage(this.texture,this.src_pos.x,this.src_pos.y,this.src_size.x,this.src_size.y,this.pos.x,this.pos.y,this.size.x,this.size.y);
+        if (!this.texture.value) {
+            return
+        }
+        context.drawImage(this.texture.value,this.src_pos.x,this.src_pos.y,this.src_size.x,this.src_size.y,this.pos.x,this.pos.y,this.size.x,this.size.y);
     }
 }
 
 class SpriteAnimation {
-    /** @type {CanvasImageSource} */
+    /** @type {Referenced<CanvasImageSource?>} */
     atlas;
-    atlas_size = new Vector2(0,0);
+    atlas_size = new Vector2();
     frames_in_row = 0;
-    frame_size = new Vector2(0,0);
+    frame_size = new Vector2();
     frame_amount = 0;
     /** 
      * @param {number} idx
@@ -148,9 +191,19 @@ class SpriteAnimation {
         frame_pos.y *= this.frame_size.y
         return frame_pos
     }
-    //TODO
+    /**
+     * @param {Referenced<CanvasImageSource?>} atlas 
+     * @param {Vector2} atlas_size 
+     * @param {number} frames_in_row 
+     * @param {Vector2} frame_size 
+     * @param {number} frame_amount 
+     */
     constructor(atlas,atlas_size,frames_in_row,frame_size,frame_amount) {
-
+        this.atlas = atlas
+        this.atlas_size = atlas_size
+        this.frames_in_row = frames_in_row
+        this.frame_size = frame_size
+        this.frame_amount = frame_amount
     }
 }
 
@@ -177,7 +230,7 @@ class AnimatedSprite extends Sprite {
         this.src_size = sprite_animation.frame_size
     }
     /**
-     * @param {CanvasImageSource} texture
+     * @param {Referenced<CanvasImageSource?>} texture
      * @param {Vector2} pos
      * @param {Vector2} size
      * @param {string} animation
@@ -202,7 +255,7 @@ class AnimatedSprite extends Sprite {
 }
 
 class Player extends AnimatedSprite {
-    velocity = new Vector2(0,0);
+    velocity = new Vector2();
     speed = 300;
     keys_down = new Map(Object.entries({
         w: false,
@@ -230,7 +283,7 @@ class Player extends AnimatedSprite {
     }
     /** @param {Game} game */
     update(game) {
-        const new_velocity = new Vector2(0,0)
+        const new_velocity = new Vector2()
         if (this.keys_down.get("w")) {
             new_velocity.y -= this.speed;
         }
@@ -246,7 +299,7 @@ class Player extends AnimatedSprite {
         new_velocity.normalize()
         new_velocity.scale(this.speed)
         this.velocity = new_velocity;
-        this.pos.x = Math.max(Math.min(this.pox.x + this.velocity.x * game.dt, game.width - this.size.x), 0);
+        this.pos.x = Math.max(Math.min(this.pos.x + this.velocity.x * game.dt, game.width - this.size.x), 0);
         this.pos.y = Math.max(Math.min(this.pos.y + this.velocity.y * game.dt, game.height - this.size.y), 0);
         if (this.velocity.x == 0 && this.velocity.y == 0) {
             if (this.animation != "idle") {
