@@ -39,6 +39,13 @@ class Vector2 {
         this.x *= amount;
         this.y *= amount;
     }
+    /**
+     * @param {Vector2} other_vec
+     * @returns {Vector2}
+    */
+    add(other_vec) {
+        return new Vector2(this.x + other_vec.x, this.y + other_vec.y);
+    }
 }
 
 class TextureLoader {
@@ -97,7 +104,7 @@ const run_spritesheet = new SpritesheetLoader(
 );
 
 class Game {
-    size = new Vector2(640, 320);
+    size = new Vector2(640, 640);
     fps = 60;
     last_frame = performance.now()
     dt = 0;
@@ -129,6 +136,12 @@ class Game {
         );
         this.target_dt = 1 / this.fps;
         this.player = player;
+        const blue_square = new Sprite(
+            new Ref("blue"),
+            new Vector2(10,10),
+            new Vector2(100,100)
+        );
+        this.sprites.push(blue_square);
         this.sprites.push(player);
     };
     init() {
@@ -146,6 +159,28 @@ class Game {
         this.last_frame = now;
         this.player.update(this);
     };
+    /**
+     * @param {Sprite} sprite
+     * @param {Sprite[]} ignore
+     * @returns {Sprite?}
+    */
+    //TODO
+    check_for_collision(sprite,ignore) {
+        for (const other_sprite of this.sprites) {
+            if (other_sprite == sprite) {
+                continue;
+            }
+            if (ignore.includes(other_sprite)) {
+                continue;
+            }
+            for (const other_collision_box of other_sprite.collision_boxes) {
+                if (sprite.collides_with(other_collision_box,)) {
+                    return other_sprite;
+                }
+            }
+        }
+        return null;
+    }
 }
 
 class Actor {
@@ -163,15 +198,45 @@ class Actor {
     }
 }
 
+class CollisionBox {
+    enabled = true;
+    pos = new Vector2();
+    size = new Vector2();
+    /** 
+     * @param {Vector2} pos
+     * @param {Vector2} size
+    */
+    constructor(pos, size) {
+        this.pos = pos;
+        this.size = size;
+    }
+    /**
+     * @param {CollisionBox} other
+     * @param {Vector2} self_offset
+     * @param {Vector2} other_offset
+     * @returns {boolean}
+    */
+    collides_with(other,self_offset,other_offset) {
+        const self_pos = this.pos.add(self_offset)
+        const other_pos = other.pos.add(other_offset)
+        return self_pos.x < other_pos.x + other.size.x &&
+            self_pos.x + this.size.x > other_pos.x &&
+            self_pos.y > other_pos.y + other.size.y &&
+            self_pos.y + this.size.y < other_pos.y
+    }
+}
+
 class Sprite extends Actor {
     pos = new Vector2();
     size = new Vector2();
     src_pos = new Vector2();
     src_size = new Vector2();
-    /** @type {Ref<CanvasImageSource?>} */
+    /** @type {Ref<ImageBitmap | string | null>} */
     texture;
+    /** @type {CollisionBox[]} */
+    collision_boxes = []
     /** 
-     * @param {Ref<CanvasImageSource?>} texture
+     * @param {Ref<ImageBitmap | string | null>} texture
      * @param {Vector2} pos
      * @param {Vector2} size
     */
@@ -186,8 +251,15 @@ class Sprite extends Actor {
         if (!this.texture.val) {
             return;
         }
-        console.log(this);
-        context.drawImage(this.texture.val, this.src_pos.x, this.src_pos.y, this.src_size.x, this.src_size.y, this.pos.x, this.pos.y, this.size.x, this.size.y);
+        if (this.texture.val instanceof ImageBitmap) {
+            context.drawImage(this.texture.val, this.src_pos.x, this.src_pos.y, this.src_size.x, this.src_size.y, this.pos.x, this.pos.y, this.size.x, this.size.y);
+        }
+        if (typeof this.texture.val == "string") {
+            const last_fill_style = context.fillStyle;
+            context.fillStyle = this.texture.val;
+            context.fillRect(this.pos.x,this.pos.y,this.size.x,this.size.y);
+            context.fillStyle = last_fill_style;
+        }
     }
 }
 
