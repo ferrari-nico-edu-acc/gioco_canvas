@@ -3,12 +3,12 @@ const game_canvas = document.querySelector("#game_canvas");
 const context = game_canvas.getContext("2d");
 
 /** @template T */
-class Referenced {
+class Ref {
     /** @type {T} */
-    value;
-    /** @param {T} value */
-    constructor(value) {
-        this.value = value;
+    val;
+    /** @param {T} val */
+    constructor(val) {
+        this.val = val;
     }
 }
 
@@ -28,6 +28,9 @@ class Vector2 {
     }
     normalize() {
         const mag = this.magnitude;
+        if (mag <= 0) {
+            return;
+        }
         this.x /= mag;
         this.y /= mag;
     }
@@ -39,8 +42,8 @@ class Vector2 {
 }
 
 class TextureLoader {
-    /** @type {Referenced<ImageBitmap?>} */
-    texture = new Referenced(null);
+    /** @type {Ref<ImageBitmap?>} */
+    texture = new Ref(null);
     size = new Vector2();
     src = "";
     /**
@@ -53,34 +56,44 @@ class TextureLoader {
         const image = new Image(this.size.x,this.size.y);
         image.src = this.src
         image.decode().then(async () => {
-            this.texture.value = await createImageBitmap(image)
+            this.texture.val = await createImageBitmap(image)
         })
     }
 }
 
 class SpritesheetLoader extends TextureLoader {
-    sprite_size = new Vector2()
+    sprite_size = new Vector2();
+    frames_in_row = 0;
+    frame_amount = 0;
     /**
      * @param {Vector2} size
-     * @param {Vector2} sprite_size
      * @param {string} src
+     * @param {Vector2} sprite_size
+     * @param {number} frames_in_row
+     * @param {number} frame_amount
      */
-    constructor(size,sprite_size,src) {
-        this.sprite_size = sprite_size
+    constructor(size,src,sprite_size,frames_in_row,frame_amount) {
         super(size,src)
+        this.sprite_size = sprite_size
+        this.frames_in_row = frames_in_row
+        this.frame_amount = frame_amount
     }
 }
 
 const idle_spritesheet = new SpritesheetLoader(
     new Vector2(1160,878),
+    "idle_spritesheet.png",
     new Vector2(232,439),
-    "idle_spritesheet.png"
+    5,
+    10
 )
 
 const run_spritesheet = new SpritesheetLoader(
     new Vector2(1452,1374),
+    "run_spritesheet.png",
     new Vector2(363,458),
-    "run_spritesheet.png"
+    4,
+    10
 )
 
 class Game {
@@ -99,8 +112,18 @@ class Game {
             new Vector2(),
             new Map(Object.entries({
                 idle: new SpriteAnimation(
-                    idle_spritesheet,
-
+                    idle_spritesheet.texture,
+                    idle_spritesheet.size,
+                    idle_spritesheet.frames_in_row,
+                    idle_spritesheet.sprite_size,
+                    idle_spritesheet.frame_amount
+                ),
+                run: new SpriteAnimation(
+                    run_spritesheet.texture,
+                    run_spritesheet.size,
+                    run_spritesheet.frames_in_row,
+                    run_spritesheet.sprite_size,
+                    run_spritesheet.frame_amount
                 )
             }))
         );
@@ -145,10 +168,10 @@ class Sprite extends Actor {
     size = new Vector2();
     src_pos = new Vector2();
     src_size = new Vector2();
-    /** @type {Referenced<CanvasImageSource?>} */
+    /** @type {Ref<CanvasImageSource?>} */
     texture;
     /** 
-     * @param {Referenced<CanvasImageSource?>} texture
+     * @param {Ref<CanvasImageSource?>} texture
      * @param {Vector2} pos
      * @param {Vector2} size
     */
@@ -160,15 +183,16 @@ class Sprite extends Actor {
     }
     /** @param {Game} game */
     draw(game) {
-        if (!this.texture.value) {
+        if (!this.texture.val) {
             return
         }
-        context.drawImage(this.texture.value,this.src_pos.x,this.src_pos.y,this.src_size.x,this.src_size.y,this.pos.x,this.pos.y,this.size.x,this.size.y);
+        console.log(this)
+        context.drawImage(this.texture.val,this.src_pos.x,this.src_pos.y,this.src_size.x,this.src_size.y,this.pos.x,this.pos.y,this.size.x,this.size.y);
     }
 }
 
 class SpriteAnimation {
-    /** @type {Referenced<CanvasImageSource?>} */
+    /** @type {Ref<CanvasImageSource?>} */
     atlas;
     atlas_size = new Vector2();
     frames_in_row = 0;
@@ -186,13 +210,13 @@ class SpriteAnimation {
      * @returns {Vector2}
     */
     get_sized_frame_pos_at_idx(idx) {
-        const frame_pos = get_frame_pos_at_idx(idx)
+        const frame_pos = this.get_frame_pos_at_idx(idx)
         frame_pos.x *= this.frame_size.x
         frame_pos.y *= this.frame_size.y
         return frame_pos
     }
     /**
-     * @param {Referenced<CanvasImageSource?>} atlas 
+     * @param {Ref<CanvasImageSource?>} atlas 
      * @param {Vector2} atlas_size 
      * @param {number} frames_in_row 
      * @param {Vector2} frame_size 
@@ -226,11 +250,12 @@ class AnimatedSprite extends Sprite {
         if (!sprite_animation) {
             return
         }
-        this.sprite = sprite_animation.atlas
+        this.texture = sprite_animation.atlas
         this.src_size = sprite_animation.frame_size
+        this.src_pos = sprite_animation.get_sized_frame_pos_at_idx(this.animation_frame);
     }
     /**
-     * @param {Referenced<CanvasImageSource?>} texture
+     * @param {Ref<CanvasImageSource?>} texture
      * @param {Vector2} pos
      * @param {Vector2} size
      * @param {string} animation
@@ -246,11 +271,11 @@ class AnimatedSprite extends Sprite {
         if (!sprite_animation) {
             return;
         }
-        this.src_pos = sprite_animation.get_sized_frame_pos_at_idx(this.animation_frame);
         if (game.last_frame - this.last_animation_frame_change >= this.animation_frame_dt) {
             this.animation_frame = (this.animation_frame + 1) % sprite_animation.frame_amount;
             this.last_animation_frame_change = game.last_frame
         }
+        this.src_pos = sprite_animation.get_sized_frame_pos_at_idx(this.animation_frame);
     }
 }
 
@@ -265,8 +290,8 @@ class Player extends AnimatedSprite {
     }));
     /** @param {Game} game */
     init(game) {
-        this.size.x = run_sprite_dimentions.x/5
-        this.size.y = run_sprite_dimentions.x/5
+        this.size.x = run_spritesheet.sprite_size.x/5
+        this.size.y = run_spritesheet.sprite_size.x/5
         this.pos.x = game.size.x / 2 - this.size.x / 2;
         this.pos.y = game.size.y / 2 - this.size.y / 2;
         this.set_animation("idle",game.last_frame);
@@ -283,6 +308,7 @@ class Player extends AnimatedSprite {
     }
     /** @param {Game} game */
     update(game) {
+        super.update(game)
         const new_velocity = new Vector2()
         if (this.keys_down.get("w")) {
             new_velocity.y -= this.speed;
@@ -299,8 +325,8 @@ class Player extends AnimatedSprite {
         new_velocity.normalize()
         new_velocity.scale(this.speed)
         this.velocity = new_velocity;
-        this.pos.x = Math.max(Math.min(this.pos.x + this.velocity.x * game.dt, game.width - this.size.x), 0);
-        this.pos.y = Math.max(Math.min(this.pos.y + this.velocity.y * game.dt, game.height - this.size.y), 0);
+        this.pos.x = Math.max(Math.min(this.pos.x + this.velocity.x * game.dt, game.size.x - this.size.x), 0);
+        this.pos.y = Math.max(Math.min(this.pos.y + this.velocity.y * game.dt, game.size.y - this.size.y), 0);
         if (this.velocity.x == 0 && this.velocity.y == 0) {
             if (this.animation != "idle") {
                 this.set_animation("idle",game.last_frame);
@@ -312,7 +338,6 @@ class Player extends AnimatedSprite {
 }
 
 const game = new Game();
-
 game.init();
 
 let last_update = performance.now();
