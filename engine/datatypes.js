@@ -19,6 +19,9 @@ export class Vector2 {
         this.x = x ?? 0;
         this.y = y ?? 0;
     }
+    static get zero() {
+        return new Vector2();
+    }
     get magnitude() {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
@@ -36,18 +39,58 @@ export class Vector2 {
         this.y *= amount;
     }
     /**
+     * @param {number} amount
+     * @returns {Vector2}
+    */
+    scaled(amount) {
+        return new Vector2(this.x*amount, this.y*amount)
+    }
+    /**
      * @param {Vector2} other_vec
      * @returns {Vector2}
     */
     add(other_vec) {
         return new Vector2(this.x + other_vec.x, this.y + other_vec.y);
     }
+    /**
+     * @param {Vector2} other_vec
+    */
+    added(other_vec) {
+        this.x += other_vec.x;
+        this.y += other_vec.y;
+    }
+    /**
+     * @param {Vector2} other_vec
+     * @returns {Vector2}
+    */
+    sub(other_vec) {
+        return new Vector2(this.x - other_vec.x, this.y - other_vec.y);
+    }
+    /**
+     * @param {Vector2} other_vec
+    */
+    subbed(other_vec) {
+        this.x -= other_vec.x;
+        this.y -= other_vec.y;
+    }
+    /**
+     * @returns {Vector2}
+    */
+    clone() {
+        return new Vector2(this.x, this.y)
+    }
+    /**
+     * @returns {Vector2}
+    */
+    neg() {
+        return new Vector2(-this.x, -this.y);
+    }
 }
 
 export class CollisionBox {
     enabled = true;
-    pos = new Vector2();
-    size = new Vector2();
+    pos = Vector2.zero;
+    size = Vector2.zero;
     /** 
      * @param {Vector2} pos
      * @param {Vector2} size
@@ -63,11 +106,11 @@ export class CollisionBox {
      * @returns {boolean}
     */
     collides_with(other,self_offset,other_offset) {
-        const self_pos = this.pos.add(self_offset)
-        const other_pos = other.pos.add(other_offset)
+        const self_pos = this.pos.add(self_offset);
+        const other_pos = other.pos.add(other_offset);
         return self_pos.x < other_pos.x + other.size.x &&
             self_pos.x + this.size.x > other_pos.x &&
-            self_pos.y > other_pos.y + other.size.y &&
-            self_pos.y + this.size.y < other_pos.y
+            self_pos.y < other_pos.y + other.size.y &&
+            self_pos.y + this.size.y > other_pos.y
     }
 }

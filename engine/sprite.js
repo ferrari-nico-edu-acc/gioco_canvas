@@ -1,11 +1,11 @@
 import { Actor } from "./actor.js";
-import { Vector2 } from "./datatypes.js";
+import { CollisionBox, Vector2, Ref } from "./datatypes.js";
 
 export class Sprite extends Actor {
-    pos = new Vector2();
-    size = new Vector2();
-    src_pos = new Vector2();
-    src_size = new Vector2();
+    pos = Vector2.zero;
+    size = Vector2.zero;
+    src_pos = Vector2.zero;
+    src_size = Vector2.zero;
     /** @type {Ref<ImageBitmap | string | null>} */
     texture;
     /** @type {CollisionBox[]} */
@@ -15,14 +15,19 @@ export class Sprite extends Actor {
      * @param {Vector2} pos
      * @param {Vector2} size
     */
+    debug_render_collision_boxes = false;
+    velocity = Vector2.zero;
+    gravity_force = 16;
     constructor(texture, pos, size) {
         super();
         this.texture = texture;
         this.pos = pos;
         this.size = size;
     }
-    /** @param {T} game */
-    draw(game) {
+    /**
+     * @param {CanvasRenderingContext2D} context 
+    */
+    draw(game,context) {
         if (!this.texture.val) {
             return;
         }
@@ -35,15 +40,33 @@ export class Sprite extends Actor {
             context.fillRect(this.pos.x,this.pos.y,this.size.x,this.size.y);
             context.fillStyle = last_fill_style;
         }
+        if (this.debug_render_collision_boxes) {
+            for (const collision_box of this.collision_boxes) {
+                const last_stroke_style = context.strokeStyle;
+                context.strokeStyle = "blue";
+                context.strokeRect(this.pos.x + collision_box.pos.x,this.pos.y + collision_box.pos.y,collision_box.size.x,collision_box.size.y);
+                context.strokeStyle = last_stroke_style;
+            }
+        }
+    }
+    update(game,dt) {
+        this.velocity.y += this.gravity_force;
+        const previous_pos = this.pos.clone();
+        this.pos.x = Math.max(Math.min(this.pos.x + this.velocity.x * dt, game.size.x - this.size.x), 0);
+        this.pos.y = Math.max(Math.min(this.pos.y + this.velocity.y * dt, game.size.y - this.size.y), 0);
+        this.velocity = this.pos.sub(previous_pos).scaled(1/dt);
+    }
+    setup_default_collision() {
+        this.collision_boxes.push(new CollisionBox(Vector2.zero, this.size.clone()));
     }
 }
 
 export class SpriteAnimation {
     /** @type {Ref<CanvasImageSource?>} */
     atlas;
-    atlas_size = new Vector2();
+    atlas_size = Vector2.zero;
     frames_in_row = 0;
-    frame_size = new Vector2();
+    frame_size = Vector2.zero;
     frame_amount = 0;
     /** 
      * @param {number} idx
@@ -112,8 +135,12 @@ export class AnimatedSprite extends Sprite {
         super(null, pos, size);
         this.sprite_animations = sprite_animations;
     }
-    /** @param {T} game */
-    update(game) {
+    /**
+     * @param {T} game
+     * @param {number} dt 
+    */
+    update(game,dt) {
+        super.update(game,dt);
         const sprite_animation = this.sprite_animations.get(this.animation);
         if (!sprite_animation) {
             return;

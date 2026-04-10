@@ -1,4 +1,4 @@
-import { SpritesheetLoader, Vector2, Sprite, Ref, AnimatedSprite, SpriteAnimation, BaseGame } from "./engine/index.js"
+import { SpritesheetLoader, Vector2, Sprite, Ref, AnimatedSprite, SpriteAnimation, BaseGame, CollisionBox } from "./engine/index.js"
 
 /** @type {HTMLCanvasElement} */
 const game_canvas = document.querySelector("#game_canvas");
@@ -27,8 +27,8 @@ class Game extends BaseGame {
     constructor(context) {
         super(context)
         const player = new Player(
-            new Vector2(),
-            new Vector2(),
+            Vector2.zero,
+            Vector2.zero,
             new Map(Object.entries({
                 idle: new SpriteAnimation(
                     idle_spritesheet.texture,
@@ -49,17 +49,26 @@ class Game extends BaseGame {
         this.player = player;
         const blue_square = new Sprite(
             new Ref("blue"),
-            new Vector2(10,10),
+            new Vector2(200,200),
             new Vector2(100,100)
         );
-        this.sprites.push(blue_square);
-        this.sprites.push(player);
+        blue_square.setup_default_collision();
+        blue_square.debug_render_collision_boxes = true;
+        player.debug_render_collision_boxes = true;
+        this.add_sprite(blue_square);
+        this.add_sprite(player);
     };
+    update() {
+        super.update();
+        const blue_square = this.sprites[0];
+        blue_square.texture.val = this.check_for_collision(blue_square) != null ? "green" : "red";
+    }
 }
 
 class Player extends AnimatedSprite {
-    velocity = new Vector2();
     speed = 300;
+    jump_height = 2000;
+    last_movement_vel = Vector2.zero;
     keys_down = new Map(Object.entries({
         w: false,
         a: false,
@@ -68,11 +77,13 @@ class Player extends AnimatedSprite {
     }));
     /** @param {Game} game */
     init(game) {
+        this.gravity_force = 20;
         this.size.x = run_spritesheet.sprite_size.x / 5;
         this.size.y = run_spritesheet.sprite_size.x / 5;
         this.pos.x = game.size.x / 2 - this.size.x / 2;
         this.pos.y = game.size.y / 2 - this.size.y / 2;
         this.set_animation("idle", game.last_frame);
+        this.setup_default_collision();
         document.addEventListener("keydown", ev => {
             if (this.keys_down.has(ev.key)) {
                 this.keys_down.set(ev.key, true);
@@ -84,27 +95,29 @@ class Player extends AnimatedSprite {
             }
         });
     }
-    /** @param {Game} game */
-    update(game) {
-        super.update(game);
-        const new_velocity = new Vector2();
-        if (this.keys_down.get("w")) {
-            new_velocity.y -= this.speed;
-        }
+    /**
+     * @param {Game} game
+     * @param {number} dt 
+    */
+    update(game,dt) {
+        super.update(game,dt);
+        this.velocity.subbed(this.last_movement_vel); //TODO fix against walls
+        this.last_movement_vel.subbed(this.last_movement_vel)
         if (this.keys_down.get("a")) {
-            new_velocity.x -= this.speed;
-        }
-        if (this.keys_down.get("s")) {
-            new_velocity.y += this.speed;
+            this.last_movement_vel.x -= this.speed;
         }
         if (this.keys_down.get("d")) {
-            new_velocity.x += this.speed;
+            this.last_movement_vel.x += this.speed;
         }
-        new_velocity.normalize();
-        new_velocity.scale(this.speed);
-        this.velocity = new_velocity;
-        this.pos.x = Math.max(Math.min(this.pos.x + this.velocity.x * game.dt, game.size.x - this.size.x), 0);
-        this.pos.y = Math.max(Math.min(this.pos.y + this.velocity.y * game.dt, game.size.y - this.size.y), 0);
+        if (this.keys_down.get("w")) {
+            this.last_movement_vel.y -= this.speed;
+        }
+        if (this.keys_down.get("s")) {
+            this.last_movement_vel.y += this.speed/3;
+        }
+        this.last_movement_vel.normalize();
+        this.last_movement_vel.scale(this.speed);
+        this.velocity.added(this.last_movement_vel);
         if (this.velocity.x == 0 && this.velocity.y == 0) {
             if (this.animation != "idle") {
                 this.set_animation("idle", game.last_frame);

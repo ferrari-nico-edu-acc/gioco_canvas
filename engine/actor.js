@@ -1,14 +1,22 @@
+/** @template T */
 export class Actor {
-    /** @param {BaseGame} game */
+    initialized = false;
+    /** @param {T} game */
     init(game) {
 
     }
-    /** @param {BaseGame} game */
-    draw(game) {
+    /**
+     * @param {T} game
+     * @param {CanvasRenderingContext2D} context 
+    */
+    draw(game,context) {
 
     }
-    /** @param {BaseGame} game */
-    update(game) {
+    /**
+     * @param {T} game
+     * @param {number} dt
+    */
+    update(game,dt) {
 
     }
 }

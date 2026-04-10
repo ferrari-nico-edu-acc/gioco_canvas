@@ -17,11 +17,11 @@ export class BaseGame {
         this.target_dt = 1 / this.fps;
     };
     init() {
-    };
+    }
     draw() {
         this.context.clearRect(0, 0, this.size.x, this.size.y);
         for (const sprite of this.sprites) {
-            sprite.draw(this);
+            sprite.draw(this,this.context);
         }
     };
     update() {
@@ -29,15 +29,26 @@ export class BaseGame {
         this.dt = (now - this.last_frame) / 1000;
         this.last_frame = now;
         for (const sprite of this.sprites) {
-            sprite.update(this);
+            sprite.update(this,this.dt);
         }
     };
+    /**
+     * @param {Sprite} sprite
+    */
+    add_sprite(sprite) {
+        if (!this.sprites.includes(sprite)) {
+            this.sprites.push(sprite);
+        }
+        if (!sprite.initialized) {
+            sprite.init(this);
+        }
+    }
     /**
      * @param {Sprite} sprite
      * @param {Sprite[]} ignore
      * @returns {Sprite?}
     */
-    check_for_collision(sprite,ignore) {
+    check_for_collision(sprite,ignore = []) {
         for (const other_sprite of this.sprites) {
             if (other_sprite == sprite) {
                 continue;

@@ -3,7 +3,7 @@ import { Ref, Vector2 } from "./datatypes.js";
 export class TextureLoader {
     /** @type {Ref<ImageBitmap?>} */
     texture = new Ref(null);
-    size = new Vector2();
+    size = Vector2.zero;
     src = "";
     /**
      * @param {Vector2} size
@@ -21,7 +21,7 @@ export class TextureLoader {
 }
 
 export class SpritesheetLoader extends TextureLoader {
-    sprite_size = new Vector2();
+    sprite_size = Vector2.zero;
     frames_in_row = 0;
     frame_amount = 0;
     /**
