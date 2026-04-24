@@ -28,26 +28,33 @@ export class Vector2 {
     normalize() {
         const mag = this.magnitude;
         if (mag <= 0) {
-            return;
+            return this;
         }
         this.x /= mag;
         this.y /= mag;
+        return this;
+    }
+    normalized() {
+        const mag = this.magnitude;
+        if (mag <= 0) {
+            return Vector2.zero;
+        }
+        return new Vector2(this.x / mag, this.y / mag);
     }
     /** @param {number} amount */
     scale(amount) {
         this.x *= amount;
         this.y *= amount;
+        return this;
     }
     /**
      * @param {number} amount
-     * @returns {Vector2}
     */
     scaled(amount) {
         return new Vector2(this.x*amount, this.y*amount)
     }
     /**
      * @param {Vector2} other_vec
-     * @returns {Vector2}
     */
     add(other_vec) {
         return new Vector2(this.x + other_vec.x, this.y + other_vec.y);
@@ -58,10 +65,10 @@ export class Vector2 {
     added(other_vec) {
         this.x += other_vec.x;
         this.y += other_vec.y;
+        return this;
     }
     /**
      * @param {Vector2} other_vec
-     * @returns {Vector2}
     */
     sub(other_vec) {
         return new Vector2(this.x - other_vec.x, this.y - other_vec.y);
@@ -72,18 +79,38 @@ export class Vector2 {
     subbed(other_vec) {
         this.x -= other_vec.x;
         this.y -= other_vec.y;
+        return this;
     }
-    /**
-     * @returns {Vector2}
-    */
     clone() {
         return new Vector2(this.x, this.y)
     }
-    /**
-     * @returns {Vector2}
-    */
     neg() {
         return new Vector2(-this.x, -this.y);
+    }
+    is_zero() {
+        return this.x === 0 && this.y === 0;
+    }
+    /**
+     * @param {Vector2} target
+     * @param {number} delta
+    */
+    move_toward(target,delta) {
+        const delta_vec = new Vector2(target.x - this.x, target.y - this.y);
+        if (delta_vec.magnitude < delta || delta_vec.magnitude < .0001) {
+            return target.clone();
+        }
+        return this.add(delta_vec.normalize().scale(delta));
+    }
+    /**
+     * @param {Vector2} other 
+    */
+    copy(other) {
+        this.x = other.x;
+        this.y = other.y;
+        return this;
+    }
+    toString() {
+        return `(${this.x}, ${this.y})`
     }
 }
 

@@ -1,4 +1,4 @@
-import { SpritesheetLoader, Vector2, Sprite, Ref, AnimatedSprite, SpriteAnimation, BaseGame, CollisionBox } from "./engine/index.js"
+import { SpritesheetLoader, Vector2, Sprite, Ref, AnimatedSprite, SpriteAnimation, BaseGame, CollisionBox, move_toward } from "./engine/index.js"
 
 /** @type {HTMLCanvasElement} */
 const game_canvas = document.querySelector("#game_canvas");
@@ -66,15 +66,7 @@ class Game extends BaseGame {
 }
 
 class Player extends AnimatedSprite {
-    speed = 300;
-    jump_height = 2000;
-    last_movement_vel = Vector2.zero;
-    keys_down = new Map(Object.entries({
-        w: false,
-        a: false,
-        s: false,
-        d: false
-    }));
+    keys_down = [];
     /** @param {Game} game */
     init(game) {
         this.gravity_force = 20;
@@ -85,13 +77,13 @@ class Player extends AnimatedSprite {
         this.set_animation("idle", game.last_frame);
         this.setup_default_collision();
         document.addEventListener("keydown", ev => {
-            if (this.keys_down.has(ev.key)) {
-                this.keys_down.set(ev.key, true);
+            if (!this.keys_down.includes(ev.key)) {
+                this.keys_down.push(ev.key);
             }
         });
         document.addEventListener("keyup", ev => {
-            if (this.keys_down.has(ev.key)) {
-                this.keys_down.set(ev.key, false);
+            if (this.keys_down.includes(ev.key)) {
+                this.keys_down.splice(this.keys_down.indexOf(ev.key),1)
             }
         });
     }
@@ -101,24 +93,24 @@ class Player extends AnimatedSprite {
     */
     update(game,dt) {
         super.update(game,dt);
-        this.velocity.subbed(this.last_movement_vel); //TODO fix against walls
-        this.last_movement_vel.subbed(this.last_movement_vel)
-        if (this.keys_down.get("a")) {
-            this.last_movement_vel.x -= this.speed;
+        const movement_vel = Vector2.zero;
+        if (this.keys_down.includes("a")) {
+            movement_vel.x -= 1;
         }
-        if (this.keys_down.get("d")) {
-            this.last_movement_vel.x += this.speed;
+        if (this.keys_down.includes("d")) {
+            movement_vel.x += 1;
         }
-        if (this.keys_down.get("w")) {
-            this.last_movement_vel.y -= this.speed;
+        if (movement_vel.x > 0) {
+            this.texture_flip_x = false;
+        } else if (movement_vel.x < 0) {
+            this.texture_flip_x = true;
         }
-        if (this.keys_down.get("s")) {
-            this.last_movement_vel.y += this.speed/3;
+        this.move(movement_vel,dt,game);
+        game.debug_log.val = this.is_grounded(game)
+        if ((this.keys_down.includes("w") || this.keys_down.includes(" ")) && this.is_grounded(game)) {
+            this.jump()
         }
-        this.last_movement_vel.normalize();
-        this.last_movement_vel.scale(this.speed);
-        this.velocity.added(this.last_movement_vel);
-        if (this.velocity.x == 0 && this.velocity.y == 0) {
+        if (this.velocity.is_zero()) {
             if (this.animation != "idle") {
                 this.set_animation("idle", game.last_frame);
             }

@@ -1,5 +1,6 @@
 import { Actor } from "./actor.js";
 import { CollisionBox, Vector2, Ref } from "./datatypes.js";
+import { move_toward, in_range } from "./math.js";
 
 export class Sprite extends Actor {
     pos = Vector2.zero;
@@ -8,8 +9,11 @@ export class Sprite extends Actor {
     src_size = Vector2.zero;
     /** @type {Ref<ImageBitmap | string | null>} */
     texture;
+    texture_flip_x = false;
+    texture_flip_y = false;
     /** @type {CollisionBox[]} */
-    collision_boxes = []
+    collision_boxes = [];
+    solid = true;
     /** 
      * @param {Ref<ImageBitmap | string | null>} texture
      * @param {Vector2} pos
@@ -18,6 +22,11 @@ export class Sprite extends Actor {
     debug_render_collision_boxes = false;
     velocity = Vector2.zero;
     gravity_force = 16;
+    speed = 500;
+    jump_height = 500;
+    acceleration = 4000;
+    ground_friction = 5000;
+    air_friction = 3000;
     constructor(texture, pos, size) {
         super();
         this.texture = texture;
@@ -32,29 +41,82 @@ export class Sprite extends Actor {
             return;
         }
         if (this.texture.val instanceof ImageBitmap) {
-            context.drawImage(this.texture.val, this.src_pos.x, this.src_pos.y, this.src_size.x, this.src_size.y, this.pos.x, this.pos.y, this.size.x, this.size.y);
+            context.save()
+            context.scale(this.texture_flip_x ? -1 : 1,this.texture_flip_y ? -1 : 1)
+            const pos = this.pos.clone()
+            if (this.texture_flip_x) {
+                pos.x = -pos.x - this.size.x
+            }
+            if (this.texture_flip_y) {
+                pos.y = -pos.y - this.size.y
+            }
+            context.drawImage(this.texture.val, this.src_pos.x, this.src_pos.y, this.src_size.x, this.src_size.y, pos.x, pos.y, this.size.x, this.size.y);
+            context.restore()
         }
         if (typeof this.texture.val == "string") {
-            const last_fill_style = context.fillStyle;
+            context.save()
             context.fillStyle = this.texture.val;
             context.fillRect(this.pos.x,this.pos.y,this.size.x,this.size.y);
-            context.fillStyle = last_fill_style;
+            context.restore()
         }
         if (this.debug_render_collision_boxes) {
             for (const collision_box of this.collision_boxes) {
-                const last_stroke_style = context.strokeStyle;
+                context.save()
                 context.strokeStyle = "blue";
                 context.strokeRect(this.pos.x + collision_box.pos.x,this.pos.y + collision_box.pos.y,collision_box.size.x,collision_box.size.y);
-                context.strokeStyle = last_stroke_style;
+                context.restore()
             }
         }
     }
+    jump() {
+        this.pos.y -= 1;
+        this.velocity.y -= this.jump_height;
+    }
+    /**
+     * @param {Vector2} direction
+     * @param {number} dt
+     * @param {any} game
+    */
+    move(direction,dt,game) {
+        const target_horizontal_velocity = direction.x * this.speed;
+        const current_acceleration = direction.x != 0 ? this.acceleration : (this.is_grounded(game) ? this.ground_friction : this.air_friction);
+        this.velocity.x = move_toward(this.velocity.x, target_horizontal_velocity, current_acceleration*dt);
+    }
+    is_grounded(game) {
+        const [collider,direction] = game.check_for_collision(this,[],true) ?? [];
+        const void_grounded = this.is_void_grounded(game)
+        if (!collider) {
+            return void_grounded;
+        }
+        return direction === "over" || void_grounded;
+    }
+    is_void_grounded(game) {
+        return this.pos.y === game.size.y - this.size.y;
+    }
     update(game,dt) {
-        this.velocity.y += this.gravity_force;
-        const previous_pos = this.pos.clone();
-        this.pos.x = Math.max(Math.min(this.pos.x + this.velocity.x * dt, game.size.x - this.size.x), 0);
-        this.pos.y = Math.max(Math.min(this.pos.y + this.velocity.y * dt, game.size.y - this.size.y), 0);
-        this.velocity = this.pos.sub(previous_pos).scaled(1/dt);
+        if (!this.is_grounded(game)) {
+            this.velocity.y += this.gravity_force;
+        } else {
+            this.velocity.y = 0;
+        }
+        const step_amount = 8;
+        let move_amount_x = this.velocity.x * dt / step_amount
+        let move_amount_y = this.velocity.y * dt / step_amount
+        for (let i = 0; i < step_amount; i++) {
+            const [collider,direction] = game.check_for_collision(this,[],true) ?? [];
+            if (collider) {
+                if ((direction === "left" && move_amount_x > 0) || (direction === "right" && move_amount_x < 0)) {
+                    move_amount_x = 0;
+                } else if ((direction === "over" && move_amount_y > 0) || (direction === "under" && move_amount_y < 0)) {
+                    move_amount_y = 0;
+                }
+            }
+            this.pos.x = Math.max(Math.min(this.pos.x + move_amount_x, game.size.x - this.size.x), 0);
+            this.pos.y = Math.max(Math.min(this.pos.y + move_amount_y, game.size.y - this.size.y), 0);
+            if (move_amount_x === 0 && move_amount_y === 0) {
+                break
+            }
+        }
     }
     setup_default_collision() {
         this.collision_boxes.push(new CollisionBox(Vector2.zero, this.size.clone()));
