@@ -21,7 +21,7 @@ export class Sprite extends Actor {
     */
     debug_render_collision_boxes = false;
     velocity = Vector2.zero;
-    gravity_force = 16;
+    gravity_force = 1500;
     speed = 500;
     jump_height = 500;
     acceleration = 4000;
@@ -70,7 +70,7 @@ export class Sprite extends Actor {
     }
     jump() {
         this.pos.y -= 1;
-        this.velocity.y -= this.jump_height;
+        this.velocity.y = -this.jump_height;
     }
     /**
      * @param {Vector2} direction
@@ -95,7 +95,7 @@ export class Sprite extends Actor {
     }
     update(game,dt) {
         if (!this.is_grounded(game)) {
-            this.velocity.y += this.gravity_force;
+            this.velocity.y += this.gravity_force * dt;
         } else {
             this.velocity.y = 0;
         }

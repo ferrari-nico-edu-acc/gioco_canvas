@@ -135,9 +135,18 @@ export class CollisionBox {
     collides_with(other,self_offset,other_offset) {
         const self_pos = this.pos.add(self_offset);
         const other_pos = other.pos.add(other_offset);
-        return self_pos.x < other_pos.x + other.size.x &&
-            self_pos.x + this.size.x > other_pos.x &&
-            self_pos.y < other_pos.y + other.size.y &&
-            self_pos.y + this.size.y > other_pos.y
+        if (self_pos.x > other_pos.x + other.size.x) {
+            return false;
+        }
+        if (self_pos.x + this.size.x < other_pos.x) {
+            return false;
+        }
+        if (self_pos.y > other_pos.y + other.size.y) {
+            return false;
+        }
+        if (self_pos.y + this.size.y < other_pos.y) {
+            return false;
+        }
+        return true;
     }
 }

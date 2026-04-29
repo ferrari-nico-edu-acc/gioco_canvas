@@ -69,7 +69,7 @@ class Player extends AnimatedSprite {
     keys_down = [];
     /** @param {Game} game */
     init(game) {
-        this.gravity_force = 20;
+        this.gravity_force = 1400;
         this.size.x = run_spritesheet.sprite_size.x / 5;
         this.size.y = run_spritesheet.sprite_size.x / 5;
         this.pos.x = game.size.x / 2 - this.size.x / 2;

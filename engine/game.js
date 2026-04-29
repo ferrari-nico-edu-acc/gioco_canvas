@@ -23,6 +23,10 @@ export class BaseGame {
     }
     draw() {
         this.context.clearRect(0, 0, this.size.x, this.size.y);
+        this.context.save()
+        this.context.fillStyle = "#3881f5"
+        this.context.fillRect(0, 0, this.size.x, this.size.y)
+        this.context.restore()
         for (const sprite of this.sprites) {
             sprite.draw(this,this.context);
         }
@@ -70,11 +74,19 @@ export class BaseGame {
             for (const other_collision_box of other_sprite.collision_boxes) {
                 for (const sprite_collision_box of sprite.collision_boxes) {
                     if (sprite_collision_box.collides_with(other_collision_box,sprite.pos,other_sprite.pos)) {
-                        const direction = in_range(sprite.pos.y + sprite.size.y,other_sprite.pos.y,10) ? "over" :
-                            in_range(sprite.pos.y,other_sprite.pos.y + other_sprite.size.y,10) ? "under" :
-                            in_range(sprite.pos.x + sprite.size.x,other_sprite.pos.x,10) ? "left" :
-                            in_range(sprite.pos.x,other_sprite.pos.x + other_sprite.size.x,10) ? "right" : "unknown"
-                        return [other_sprite,direction];
+                        if (in_range(sprite.pos.y + sprite.size.y,other_sprite.pos.y,4)) {
+                            return [other_sprite,"over"];
+                        }
+                        if (in_range(sprite.pos.y,other_sprite.pos.y + other_sprite.size.y,10)) {
+                            return [other_sprite,"under"];
+                        }
+                        if (in_range(sprite.pos.x + sprite.size.x,other_sprite.pos.x,10)) {
+                            return [other_sprite,"left"];
+                        }
+                        if (in_range(sprite.pos.x,other_sprite.pos.x + other_sprite.size.x,10)) {
+                            return [other_sprite,"right"];
+                        }
+                        return [other_sprite,"unknown"];
                     }
                 }
             }
