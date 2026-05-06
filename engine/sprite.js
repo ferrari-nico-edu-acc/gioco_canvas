@@ -34,9 +34,10 @@ export class Sprite extends Actor {
         this.size = size;
     }
     /**
-     * @param {CanvasRenderingContext2D} context 
+     * @param {CanvasRenderingContext2D} context
+     * @param {Vector2} offset
     */
-    draw(game,context) {
+    draw(game,context,offset) {
         if (!this.texture.val) {
             return;
         }
@@ -45,25 +46,25 @@ export class Sprite extends Actor {
             context.scale(this.texture_flip_x ? -1 : 1,this.texture_flip_y ? -1 : 1)
             const pos = this.pos.clone()
             if (this.texture_flip_x) {
-                pos.x = -pos.x - this.size.x
+                pos.x = -pos.x - this.size.x - offset.x * 2
             }
             if (this.texture_flip_y) {
-                pos.y = -pos.y - this.size.y
+                pos.y = -pos.y - this.size.y - offset.y * 2
             }
-            context.drawImage(this.texture.val, this.src_pos.x, this.src_pos.y, this.src_size.x, this.src_size.y, pos.x, pos.y, this.size.x, this.size.y);
+            context.drawImage(this.texture.val, this.src_pos.x, this.src_pos.y, this.src_size.x, this.src_size.y, pos.x + offset.x, pos.y + offset.y, this.size.x, this.size.y);
             context.restore()
         }
         if (typeof this.texture.val == "string") {
             context.save()
             context.fillStyle = this.texture.val;
-            context.fillRect(this.pos.x,this.pos.y,this.size.x,this.size.y);
+            context.fillRect(this.pos.x + offset.x,this.pos.y + offset.y,this.size.x,this.size.y);
             context.restore()
         }
         if (this.debug_render_collision_boxes) {
             for (const collision_box of this.collision_boxes) {
                 context.save()
                 context.strokeStyle = "blue";
-                context.strokeRect(this.pos.x + collision_box.pos.x,this.pos.y + collision_box.pos.y,collision_box.size.x,collision_box.size.y);
+                context.strokeRect(this.pos.x + collision_box.pos.x + offset.x,this.pos.y + collision_box.pos.y + offset.y,collision_box.size.x,collision_box.size.y);
                 context.restore()
             }
         }
@@ -111,8 +112,8 @@ export class Sprite extends Actor {
                     move_amount_y = 0;
                 }
             }
-            this.pos.x = Math.max(Math.min(this.pos.x + move_amount_x, game.size.x - this.size.x), 0);
-            this.pos.y = Math.max(Math.min(this.pos.y + move_amount_y, game.size.y - this.size.y), 0);
+            this.pos.x += move_amount_x
+            this.pos.y = Math.min(this.pos.y + move_amount_y, game.size.y - this.size.y)
             if (move_amount_x === 0 && move_amount_y === 0) {
                 break
             }

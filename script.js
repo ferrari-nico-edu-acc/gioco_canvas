@@ -23,9 +23,12 @@ const run_spritesheet = new SpritesheetLoader(
 class Game extends BaseGame {
     /** @type {Player} */
     player;
-    /** @param {CanvasRenderingContext2D} context */
-    constructor(context) {
-        super(context)
+    /**
+     * @param {CanvasRenderingContext2D} context
+     * @param {Vector2} size 
+    */
+    constructor(context,size) {
+        super(context,size)
         const player = new Player(
             Vector2.zero,
             Vector2.zero,
@@ -47,21 +50,20 @@ class Game extends BaseGame {
             }))
         );
         this.player = player;
-        const blue_square = new Sprite(
-            new Ref("blue"),
+        const black_square = new Sprite(
+            new Ref("black"),
             new Vector2(200,200),
-            new Vector2(100,100)
+            new Vector2(100,50)
         );
-        blue_square.setup_default_collision();
-        blue_square.debug_render_collision_boxes = true;
-        player.debug_render_collision_boxes = true;
-        this.add_sprite(blue_square);
+        black_square.setup_default_collision();
+        this.add_sprite(black_square);
         this.add_sprite(player);
     };
     update() {
         super.update();
-        const blue_square = this.sprites[0];
-        blue_square.texture.val = this.check_for_collision(blue_square) != null ? "green" : "red";
+        /*const black_square = this.sprites[0];
+        black_square.texture.val = this.check_for_collision(black_square) != null ? "green" : "red";*/
+        this.camera_position.x = -this.player.pos.x + this.size.x/2 - this.player.size.x/2
     }
 }
 
@@ -106,7 +108,7 @@ class Player extends AnimatedSprite {
             this.texture_flip_x = true;
         }
         this.move(movement_vel,dt,game);
-        game.debug_log.val = this.is_grounded(game)
+        //game.debug_log.val = this.is_grounded(game)
         if ((this.keys_down.includes("w") || this.keys_down.includes(" ")) && this.is_grounded(game)) {
             this.jump()
         }
@@ -120,7 +122,7 @@ class Player extends AnimatedSprite {
     }
 }
 
-const game = new Game(context);
+const game = new Game(context,new Vector2(game_canvas.width,game_canvas.height));
 game.init();
 
 let last_update = performance.now();

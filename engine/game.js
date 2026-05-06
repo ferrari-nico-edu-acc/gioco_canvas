@@ -3,21 +3,27 @@ import { Sprite } from "./sprite.js";
 import { in_range } from "./math.js";
 
 export class BaseGame {
-    size = new Vector2(640, 640);
+    size = Vector2.zero;
     fps = 60;
-    last_frame = performance.now()
+    last_frame = performance.now();
     dt = 0;
     target_dt = 0;
     /** @type {Ref<any>} */
     debug_log = new Ref(null)
     /** @type {Sprite[]} */
     sprites = [];
+    /** @type {Vector2} */
+    camera_position = Vector2.zero;
     /** @type {CanvasRenderingContext2D} */
     context;
-    /** @param {CanvasRenderingContext2D} context */
-    constructor(context) {
+    /**
+     * @param {CanvasRenderingContext2D} context
+     * @param {Vector2} size
+    */
+    constructor(context,size) {
         this.context = context
         this.target_dt = 1 / this.fps;
+        this.size = size;
     };
     init() {
     }
@@ -28,12 +34,14 @@ export class BaseGame {
         this.context.fillRect(0, 0, this.size.x, this.size.y)
         this.context.restore()
         for (const sprite of this.sprites) {
-            sprite.draw(this,this.context);
+            sprite.draw(this,this.context,this.camera_position);
         }
-        this.context.save()
-        this.context.font = "30px Arial"
-        this.context.fillText(String(this.debug_log.val),20,50)
-        this.context.restore()
+        if (this.debug_log.val != null) {
+            this.context.save()
+            this.context.font = "30px Arial"
+            this.context.fillText(String(this.debug_log.val),20,50)
+            this.context.restore()
+        }
     };
     update() {
         const now = performance.now();
