@@ -1,6 +1,6 @@
 import { Vector2, Ref } from "./datatypes.js";
-import { Sprite } from "./sprite.js";
 import { in_range } from "./math.js";
+/** @import { Sprite } from "./sprite.js" */
 
 export class BaseGame {
     size = Vector2.zero;

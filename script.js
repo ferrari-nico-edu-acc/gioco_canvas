@@ -1,8 +1,22 @@
-import { SpritesheetLoader, Vector2, Sprite, Ref, AnimatedSprite, SpriteAnimation, BaseGame, CollisionBox, move_toward } from "./engine/index.js"
+import { SpritesheetLoader, Vector2, Sprite, Ref, AnimatedSprite, SpriteAnimation, BaseGame, TextureLoader } from "./engine/index.js"
 
 /** @type {HTMLCanvasElement} */
 const game_canvas = document.querySelector("#game_canvas");
 const context = game_canvas.getContext("2d");
+context.imageSmoothingEnabled = false
+
+const tile_size = 48
+const tiles = [
+    "",
+    " & ",
+    "",
+    "?&?",
+]
+
+const smb_tileset = new TextureLoader(
+    new Vector2(680,776),
+    "smb_tileset.png"
+)
 
 const idle_spritesheet = new SpritesheetLoader(
     new Vector2(1160, 878),
@@ -20,12 +34,22 @@ const run_spritesheet = new SpritesheetLoader(
     10
 );
 
+/**
+ * @param {number} column
+ * @param {number} row
+ * @param {Vector2} src_pos
+ * @param {Game} game
+*/
+function create_tile(column,row,src_pos,game) {
+    return new Sprite(smb_tileset.texture,new Vector2(column * tile_size,row * tile_size),new Vector2(tile_size,tile_size),src_pos,new Vector2(16,16))
+}
+
 class Game extends BaseGame {
     /** @type {Player} */
     player;
     /**
      * @param {CanvasRenderingContext2D} context
-     * @param {Vector2} size 
+     * @param {Vector2} size
     */
     constructor(context,size) {
         super(context,size)
@@ -50,20 +74,32 @@ class Game extends BaseGame {
             }))
         );
         this.player = player;
-        const black_square = new Sprite(
-            new Ref("black"),
-            new Vector2(200,200),
-            new Vector2(100,50)
-        );
-        black_square.setup_default_collision();
-        this.add_sprite(black_square);
         this.add_sprite(player);
+        for (let row = 0; row < tiles.length; row++) {
+            const row_tiles = tiles[row].split("")
+            for (let column = 0; column < row_tiles.length; column++) {
+                const tile = row_tiles[column];
+                console.log(tile)
+                switch (tile) {
+                    case " ":
+                        break
+                    case "&":
+                        const breakable_block = create_tile(column,row,new Vector2(17,16),this);
+                        breakable_block.setup_default_collision();
+                        this.add_sprite(breakable_block);
+                        break
+                    case "?":
+                        const question_block = create_tile(column,row,new Vector2(298,78),this);
+                        question_block.setup_default_collision();
+                        this.add_sprite(question_block);
+                        break
+                }
+            }
+        }
     };
     update() {
         super.update();
-        /*const black_square = this.sprites[0];
-        black_square.texture.val = this.check_for_collision(black_square) != null ? "green" : "red";*/
-        this.camera_position.x = -this.player.pos.x + this.size.x/2 - this.player.size.x/2
+        this.camera_position.x = -this.player.pos.x + this.size.x/2 - this.player.size.x/2 - this.size.x/8
     }
 }
 
@@ -71,11 +107,11 @@ class Player extends AnimatedSprite {
     keys_down = [];
     /** @param {Game} game */
     init(game) {
+        super.init(game)
         this.gravity_force = 1400;
         this.size.x = run_spritesheet.sprite_size.x / 5;
         this.size.y = run_spritesheet.sprite_size.x / 5;
-        this.pos.x = game.size.x / 2 - this.size.x / 2;
-        this.pos.y = game.size.y / 2 - this.size.y / 2;
+        this.pos.y = game.size.y - this.size.y / 2;
         this.set_animation("idle", game.last_frame);
         this.setup_default_collision();
         document.addEventListener("keydown", ev => {
@@ -108,7 +144,6 @@ class Player extends AnimatedSprite {
             this.texture_flip_x = true;
         }
         this.move(movement_vel,dt,game);
-        //game.debug_log.val = this.is_grounded(game)
         if ((this.keys_down.includes("w") || this.keys_down.includes(" ")) && this.is_grounded(game)) {
             this.jump()
         }

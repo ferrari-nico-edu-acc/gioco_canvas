@@ -1,13 +1,16 @@
 import { Actor } from "./actor.js";
-import { CollisionBox, Vector2, Ref } from "./datatypes.js";
-import { move_toward, in_range } from "./math.js";
+import { CollisionBox, Vector2 } from "./datatypes.js";
+import { move_toward } from "./math.js";
+/** @import { BaseGame } from "./game.js" */
+/** @import { Ref } from "./datatypes.js" */
+/** @typedef {Ref<ImageBitmap | string | null>} Texture */
 
 export class Sprite extends Actor {
     pos = Vector2.zero;
     size = Vector2.zero;
     src_pos = Vector2.zero;
     src_size = Vector2.zero;
-    /** @type {Ref<ImageBitmap | string | null>} */
+    /** @type {Texture} */
     texture;
     texture_flip_x = false;
     texture_flip_y = false;
@@ -15,25 +18,35 @@ export class Sprite extends Actor {
     collision_boxes = [];
     solid = true;
     /** 
-     * @param {Ref<ImageBitmap | string | null>} texture
+     * @param {Texture} texture
      * @param {Vector2} pos
      * @param {Vector2} size
     */
     debug_render_collision_boxes = false;
     velocity = Vector2.zero;
-    gravity_force = 1500;
+    gravity_force = 0;
     speed = 500;
     jump_height = 500;
     acceleration = 4000;
     ground_friction = 5000;
     air_friction = 3000;
-    constructor(texture, pos, size) {
+    /**
+     * @param {Texture} texture 
+     * @param {Vector2} pos 
+     * @param {Vector2} size 
+     * @param {Vector2?} src_pos 
+     * @param {Vector2?} src_size 
+    */
+    constructor(texture, pos, size, src_pos, src_size) {
         super();
         this.texture = texture;
         this.pos = pos;
         this.size = size;
+        this.src_pos = src_pos ?? Vector2.zero;
+        this.src_size = src_size ?? Vector2.zero;
     }
     /**
+     * @param {BaseGame} game
      * @param {CanvasRenderingContext2D} context
      * @param {Vector2} offset
     */
@@ -76,13 +89,14 @@ export class Sprite extends Actor {
     /**
      * @param {Vector2} direction
      * @param {number} dt
-     * @param {any} game
+     * @param {BaseGame} game
     */
     move(direction,dt,game) {
         const target_horizontal_velocity = direction.x * this.speed;
         const current_acceleration = direction.x != 0 ? this.acceleration : (this.is_grounded(game) ? this.ground_friction : this.air_friction);
         this.velocity.x = move_toward(this.velocity.x, target_horizontal_velocity, current_acceleration*dt);
     }
+    /** @param {BaseGame} game */
     is_grounded(game) {
         const [collider,direction] = game.check_for_collision(this,[],true) ?? [];
         const void_grounded = this.is_void_grounded(game)
@@ -91,9 +105,14 @@ export class Sprite extends Actor {
         }
         return direction === "over" || void_grounded;
     }
+    /** @param {BaseGame} game */
     is_void_grounded(game) {
         return this.pos.y === game.size.y - this.size.y;
     }
+    /**
+     * @param {BaseGame} game
+     * @param {number} dt
+    */
     update(game,dt) {
         if (!this.is_grounded(game)) {
             this.velocity.y += this.gravity_force * dt;
@@ -199,7 +218,7 @@ export class AnimatedSprite extends Sprite {
         this.sprite_animations = sprite_animations;
     }
     /**
-     * @param {T} game
+     * @param {BaseGame} game
      * @param {number} dt 
     */
     update(game,dt) {

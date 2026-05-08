@@ -9,4 +9,5 @@ body {
 
 #game_canvas {
     border-style: solid;
+    image-rendering: pixelated;
 }
