@@ -1,6 +1,7 @@
 import { Vector2, Ref } from "./datatypes.js";
 import { in_range } from "./math.js";
 /** @import { Sprite } from "./sprite.js" */
+/** @typedef {"over"|"under"|"left"|"right"|"unknown"} Direction */
 
 export class BaseGame {
     size = Vector2.zero;
@@ -16,6 +17,8 @@ export class BaseGame {
     camera_position = Vector2.zero;
     /** @type {CanvasRenderingContext2D} */
     context;
+    /** @type {Map<Sprite,[Sprite,Direction][]>} */
+    frame_collisions = new Map()
     /**
      * @param {CanvasRenderingContext2D} context
      * @param {Vector2} size
@@ -30,7 +33,7 @@ export class BaseGame {
     draw() {
         this.context.clearRect(0, 0, this.size.x, this.size.y);
         this.context.save()
-        this.context.fillStyle = "#3881f5"
+        this.context.fillStyle = "#9494FF"
         this.context.fillRect(0, 0, this.size.x, this.size.y)
         this.context.restore()
         for (const sprite of this.sprites) {
@@ -47,6 +50,10 @@ export class BaseGame {
         const now = performance.now();
         this.dt = (now - this.last_frame) / 1000;
         this.last_frame = now;
+        this.frame_collisions.clear()
+        for (const sprite of this.sprites) {
+            this.frame_collisions.set(sprite,this.check_for_collision(sprite,[],false))
+        }
         for (const sprite of this.sprites) {
             sprite.update(this,this.dt);
         }
@@ -66,13 +73,17 @@ export class BaseGame {
      * @param {Sprite} sprite
      * @param {Sprite[]} ignore
      * @param {boolean} only_solid
-     * @returns {[Sprite,"over"|"under"|"left"|"right"|"unknown"]?}
+     * @returns {[Sprite,Direction][]}
     */
     check_for_collision(sprite,ignore = [],only_solid) {
+        const collisions = []
         for (const other_sprite of this.sprites) {
             if (other_sprite === sprite) {
                 continue;
             }
+            /*if (this.frame_collisions.has(other_sprite)) {
+                continue;
+            }*/
             if (only_solid && !sprite.solid) {
                 continue;
             }
@@ -82,23 +93,23 @@ export class BaseGame {
             for (const other_collision_box of other_sprite.collision_boxes) {
                 for (const sprite_collision_box of sprite.collision_boxes) {
                     if (sprite_collision_box.collides_with(other_collision_box,sprite.pos,other_sprite.pos)) {
+                        let collision
                         if (in_range(sprite.pos.y + sprite.size.y,other_sprite.pos.y,4)) {
-                            return [other_sprite,"over"];
+                            collision = [other_sprite,"over"];
+                        } else if (in_range(sprite.pos.y,other_sprite.pos.y + other_sprite.size.y,10)) {
+                            collision = [other_sprite,"under"];
+                        } else if (in_range(sprite.pos.x + sprite.size.x,other_sprite.pos.x,10)) {
+                            collision = [other_sprite,"left"];
+                        } else if (in_range(sprite.pos.x,other_sprite.pos.x + other_sprite.size.x,10)) {
+                            collision = [other_sprite,"right"];
+                        } else {
+                            collision = [other_sprite,"unknown"];
                         }
-                        if (in_range(sprite.pos.y,other_sprite.pos.y + other_sprite.size.y,10)) {
-                            return [other_sprite,"under"];
-                        }
-                        if (in_range(sprite.pos.x + sprite.size.x,other_sprite.pos.x,10)) {
-                            return [other_sprite,"left"];
-                        }
-                        if (in_range(sprite.pos.x,other_sprite.pos.x + other_sprite.size.x,10)) {
-                            return [other_sprite,"right"];
-                        }
-                        return [other_sprite,"unknown"];
+                        collisions.push(collision)
                     }
                 }
             }
         }
-        return null;
+        return collisions;
     }
 }

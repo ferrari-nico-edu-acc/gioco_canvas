@@ -11,7 +11,11 @@ const tiles = [
     " & ",
     "",
     "?&?",
+    "      ",
+    "     &&",
+    "    &&&"
 ]
+const tile_x_offset = 3 * tile_size
 
 const smb_tileset = new TextureLoader(
     new Vector2(680,776),
@@ -41,7 +45,8 @@ const run_spritesheet = new SpritesheetLoader(
  * @param {Game} game
 */
 function create_tile(column,row,src_pos,game) {
-    return new Sprite(smb_tileset.texture,new Vector2(column * tile_size,row * tile_size),new Vector2(tile_size,tile_size),src_pos,new Vector2(16,16))
+    const y_offset = game.size.y - tiles.length * tile_size
+    return new Sprite(smb_tileset.texture,new Vector2(tile_x_offset + column * tile_size,y_offset + row * tile_size),new Vector2(tile_size,tile_size),src_pos,new Vector2(16,16))
 }
 
 class Game extends BaseGame {
@@ -79,7 +84,6 @@ class Game extends BaseGame {
             const row_tiles = tiles[row].split("")
             for (let column = 0; column < row_tiles.length; column++) {
                 const tile = row_tiles[column];
-                console.log(tile)
                 switch (tile) {
                     case " ":
                         break
@@ -109,6 +113,7 @@ class Player extends AnimatedSprite {
     init(game) {
         super.init(game)
         this.gravity_force = 1400;
+        this.collision_steps = 3;
         this.size.x = run_spritesheet.sprite_size.x / 5;
         this.size.y = run_spritesheet.sprite_size.x / 5;
         this.pos.y = game.size.y - this.size.y / 2;
@@ -144,10 +149,11 @@ class Player extends AnimatedSprite {
             this.texture_flip_x = true;
         }
         this.move(movement_vel,dt,game);
-        if ((this.keys_down.includes("w") || this.keys_down.includes(" ")) && this.is_grounded(game)) {
+        const is_grounded = this.is_grounded(game)
+        if ((this.keys_down.includes("w") || this.keys_down.includes(" ")) && is_grounded) {
             this.jump()
         }
-        if (this.velocity.is_zero()) {
+        if (this.velocity.is_zero() && is_grounded) {
             if (this.animation != "idle") {
                 this.set_animation("idle", game.last_frame);
             }

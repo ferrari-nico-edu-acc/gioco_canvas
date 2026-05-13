@@ -26,10 +26,11 @@ export class Sprite extends Actor {
     velocity = Vector2.zero;
     gravity_force = 0;
     speed = 500;
-    jump_height = 500;
+    jump_height = 600;
     acceleration = 4000;
     ground_friction = 5000;
     air_friction = 3000;
+    collision_steps = 1;
     /**
      * @param {Texture} texture 
      * @param {Vector2} pos 
@@ -98,12 +99,16 @@ export class Sprite extends Actor {
     }
     /** @param {BaseGame} game */
     is_grounded(game) {
-        const [collider,direction] = game.check_for_collision(this,[],true) ?? [];
-        const void_grounded = this.is_void_grounded(game)
-        if (!collider) {
-            return void_grounded;
+        const collisions = game.frame_collisions.get(this);
+        for (const [collider,direction] of collisions) {
+            if (!collider.solid) {
+                continue;
+            }
+            if (direction === "over") {
+                return true;
+            }
         }
-        return direction === "over" || void_grounded;
+        return this.is_void_grounded(game);
     }
     /** @param {BaseGame} game */
     is_void_grounded(game) {
@@ -119,15 +124,24 @@ export class Sprite extends Actor {
         } else {
             this.velocity.y = 0;
         }
-        const step_amount = 8;
-        let move_amount_x = this.velocity.x * dt / step_amount
-        let move_amount_y = this.velocity.y * dt / step_amount
-        for (let i = 0; i < step_amount; i++) {
-            const [collider,direction] = game.check_for_collision(this,[],true) ?? [];
-            if (collider) {
+        let move_amount_x = this.velocity.x * dt / this.collision_steps
+        let move_amount_y = this.velocity.y * dt / this.collision_steps
+        for (let i = 0; i < this.collision_steps; i++) {
+            let collisions;
+            if (this.collision_steps <= 1 || i == 0) {
+                collisions = game.frame_collisions.get(this);
+            } else {
+                collisions = game.check_for_collision(this,[],true);
+            }
+            for (const [collider,direction] of collisions) {
+                if (!collider.solid) {
+                    continue
+                }
                 if ((direction === "left" && move_amount_x > 0) || (direction === "right" && move_amount_x < 0)) {
+                    this.velocity.x = 0;
                     move_amount_x = 0;
                 } else if ((direction === "over" && move_amount_y > 0) || (direction === "under" && move_amount_y < 0)) {
+                    this.velocity.y = 0;
                     move_amount_y = 0;
                 }
             }
