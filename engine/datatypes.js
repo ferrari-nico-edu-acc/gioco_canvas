@@ -150,3 +150,45 @@ export class CollisionBox {
         return true;
     }
 }
+
+export class Signal {
+    /** @type {SignalConnection[]} */
+    connections = [];
+    emit(...args) {
+        for (const connection of this.connections) {
+            connection.callback(...args);
+        }
+    }
+    /** @param {Function} callback */
+    connect(callback) {
+        const connection = new SignalConnection()
+        connection.callback = callback;
+        connection.signal = this;
+        this.connections.push(connection);
+        return connection
+    }
+    /** @param {Function} callback */
+    once(callback) {
+        /** @type {SignalConnection} */
+        let connection;
+        connection = this.connect(function(...args) {
+            callback(...args);
+            connection.disconnect()
+        })
+        return connection
+    }
+}
+
+export class SignalConnection {
+    /** @type {Signal} */
+    signal;
+    /** @type {Function} */
+    callback;
+    disconnect() {
+        const idx = this.signal.connections.indexOf(this);
+        if (idx < 0) {
+            return;
+        }
+        this.signal.connections.splice(idx,1);
+    }
+}

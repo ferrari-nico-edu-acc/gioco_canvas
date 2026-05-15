@@ -91,6 +91,12 @@ class Game extends BaseGame {
                         const breakable_block = create_tile(column,row,new Vector2(17,16),this);
                         breakable_block.setup_default_collision();
                         this.add_sprite(breakable_block);
+                        breakable_block.hit.connect(() => {
+                            /** @type {import("./engine/game.js").CollisionInfo} */
+                            let collision;
+                            //TODO
+                            this.sprites.splice(this.sprites.indexOf(breakable_block),1)
+                        })
                         break
                     case "?":
                         const question_block = create_tile(column,row,new Vector2(298,78),this);
@@ -111,12 +117,13 @@ class Player extends AnimatedSprite {
     keys_down = [];
     /** @param {Game} game */
     init(game) {
-        super.init(game)
+        super.init(game);
         this.gravity_force = 1400;
+        this.collision_sensor = true;
         this.collision_steps = 3;
         this.size.x = run_spritesheet.sprite_size.x / 5;
         this.size.y = run_spritesheet.sprite_size.x / 5;
-        this.pos.y = game.size.y - this.size.y / 2;
+        this.pos.y = game.size.y - this.size.y;
         this.set_animation("idle", game.last_frame);
         this.setup_default_collision();
         document.addEventListener("keydown", ev => {

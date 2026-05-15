@@ -1,5 +1,5 @@
 import { Actor } from "./actor.js";
-import { CollisionBox, Vector2 } from "./datatypes.js";
+import { CollisionBox, Signal, Vector2 } from "./datatypes.js";
 import { move_toward } from "./math.js";
 /** @import { BaseGame } from "./game.js" */
 /** @import { Ref } from "./datatypes.js" */
@@ -25,12 +25,15 @@ export class Sprite extends Actor {
     debug_render_collision_boxes = false;
     velocity = Vector2.zero;
     gravity_force = 0;
+    collision_sensor = false;
     speed = 500;
     jump_height = 600;
     acceleration = 4000;
     ground_friction = 5000;
     air_friction = 3000;
     collision_steps = 1;
+    jumped = new Signal();
+    hit = new Signal();
     /**
      * @param {Texture} texture 
      * @param {Vector2} pos 
@@ -86,6 +89,7 @@ export class Sprite extends Actor {
     jump() {
         this.pos.y -= 1;
         this.velocity.y = -this.jump_height;
+        this.jumped.emit();
     }
     /**
      * @param {Vector2} direction
@@ -99,6 +103,9 @@ export class Sprite extends Actor {
     }
     /** @param {BaseGame} game */
     is_grounded(game) {
+        if (this.velocity.y < 0) {
+            return;
+        }
         const collisions = game.frame_collisions.get(this);
         for (const [collider,direction] of collisions) {
             if (!collider.solid) {
@@ -119,10 +126,31 @@ export class Sprite extends Actor {
      * @param {number} dt
     */
     update(game,dt) {
+        if (!this.collision_sensor) {
+            return
+        }
+        if (!this.velocity.is_zero() || this.gravity_force != 0) {
+            this.update_movement(game,dt);
+        }
+        for (const [collider] of game.frame_collisions.get(this)) {
+            this.hit.emit(collider);
+            if (!collider.collision_sensor) {
+                collider.hit.emit(this);
+            }
+        }
+    }
+    /**
+     * @param {BaseGame} game
+     * @param {number} dt
+    */
+    update_movement(game,dt) {
         if (!this.is_grounded(game)) {
             this.velocity.y += this.gravity_force * dt;
         } else {
             this.velocity.y = 0;
+        }
+        if (this.velocity.is_zero()) {
+            return;
         }
         let move_amount_x = this.velocity.x * dt / this.collision_steps
         let move_amount_y = this.velocity.y * dt / this.collision_steps
@@ -132,8 +160,13 @@ export class Sprite extends Actor {
                 collisions = game.frame_collisions.get(this);
             } else {
                 collisions = game.check_for_collision(this,[],true);
+                game.frame_collisions.set(this,collisions);
             }
-            for (const [collider,direction] of collisions) {
+            if (this.is_void_grounded(game)) {
+                this.velocity.y = 0;
+                move_amount_y = 0;
+            }
+            for (const [collider,direction,cb,ocb] of collisions) {
                 if (!collider.solid) {
                     continue
                 }
@@ -143,6 +176,10 @@ export class Sprite extends Actor {
                 } else if ((direction === "over" && move_amount_y > 0) || (direction === "under" && move_amount_y < 0)) {
                     this.velocity.y = 0;
                     move_amount_y = 0;
+                    if (direction === "over") {
+                        this.pos.y -= Math.max(0,Math.min(Math.max(this.pos.y,this.pos.y + this.size.y),Math.max(collider.pos.y,collider.pos.y + collider.size.y)) - Math.max(Math.min(this.pos.y,this.pos.y + this.size.y),Math.min(collider.pos.y,collider.pos.y + collider.size.y)))
+                        // ^ height of intersection of the 2 sprites
+                    }
                 }
             }
             this.pos.x += move_amount_x
