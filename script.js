@@ -10,10 +10,10 @@ const tiles = [
     "",
     " & ",
     "",
-    "?&?",
+    "&&&&&&&&&&&&&&&&&&&&&&&&&&&&& ?&?",
     "      ",
-    "     &&",
-    "    &&&"
+    "     ",
+    "    "
 ]
 const tile_x_offset = 3 * tile_size
 
@@ -91,10 +91,13 @@ class Game extends BaseGame {
                         const breakable_block = create_tile(column,row,new Vector2(17,16),this);
                         breakable_block.setup_default_collision();
                         this.add_sprite(breakable_block);
-                        breakable_block.hit.connect(() => {
-                            /** @type {import("./engine/game.js").CollisionInfo} */
-                            let collision;
-                            //TODO
+                        breakable_block.hit.connect(([collider,collision]) => {
+                            if (!collider instanceof Player) {
+                                return;
+                            }
+                            if (collision[1] != "under") {
+                                return;
+                            }
                             this.sprites.splice(this.sprites.indexOf(breakable_block),1)
                         })
                         break

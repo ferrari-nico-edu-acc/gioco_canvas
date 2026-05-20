@@ -151,15 +151,22 @@ export class CollisionBox {
     }
 }
 
+/** @template T */
 export class Signal {
     /** @type {SignalConnection[]} */
     connections = [];
-    emit(...args) {
+    /** @param {T} payload */
+    emit(payload) {
         for (const connection of this.connections) {
-            connection.callback(...args);
+            connection.callback(payload);
         }
     }
-    /** @param {Function} callback */
+    /**
+     * @callback sig_cb
+     * @param {T} payload
+     * @returns {void}
+    */
+    /** @param {sig_cb} callback */
     connect(callback) {
         const connection = new SignalConnection()
         connection.callback = callback;
@@ -167,7 +174,7 @@ export class Signal {
         this.connections.push(connection);
         return connection
     }
-    /** @param {Function} callback */
+    /** @param {sig_cb} callback */
     once(callback) {
         /** @type {SignalConnection} */
         let connection;

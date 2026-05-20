@@ -1,7 +1,7 @@
 import { Actor } from "./actor.js";
 import { CollisionBox, Signal, Vector2 } from "./datatypes.js";
 import { move_toward } from "./math.js";
-/** @import { BaseGame } from "./game.js" */
+/** @import { BaseGame, CollisionInfo } from "./game.js" */
 /** @import { Ref } from "./datatypes.js" */
 /** @typedef {Ref<ImageBitmap | string | null>} Texture */
 
@@ -33,6 +33,7 @@ export class Sprite extends Actor {
     air_friction = 3000;
     collision_steps = 1;
     jumped = new Signal();
+    /** @type {Signal<[Sprite,CollisionInfo]>} */
     hit = new Signal();
     /**
      * @param {Texture} texture 
@@ -132,10 +133,11 @@ export class Sprite extends Actor {
         if (!this.velocity.is_zero() || this.gravity_force != 0) {
             this.update_movement(game,dt);
         }
-        for (const [collider] of game.frame_collisions.get(this)) {
-            this.hit.emit(collider);
+        for (const info of game.frame_collisions.get(this)) {
+            const [collider] = info
+            this.hit.emit([collider,info]);
             if (!collider.collision_sensor) {
-                collider.hit.emit(this);
+                collider.hit.emit([this,info]);
             }
         }
     }
